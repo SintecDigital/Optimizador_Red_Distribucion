@@ -1,0 +1,3 @@
+id_locacion,locacion,capacidad_din,capacidad_est,Costo Fijo Mensual Operación,costo_almacenamiento,id_ciudad,ciudad,id_pais,pais,Latitud,Longitud,abre/cierra
+CEDI_NORTE,,,9999,,1.5,,,,,,,
+CEDI_SUR,,,9999,,0.8,,,,,,,

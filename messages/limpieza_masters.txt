@@ -1,0 +1,2 @@
+﻿Habφan 67 filas en master_producto y ahora hay 67
+Cantidad inicial 533525.33662, cantidad final 533525.33662

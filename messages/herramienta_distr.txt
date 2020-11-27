@@ -1,0 +1,36 @@
+﻿GLPK Simplex Optimizer, v4.65
+62322 rows, 49254 columns, 154338 non-zeros
+      0: obj =   0.000000000e+00 inf =   5.335e+05 (7344)
+   2429: obj =   1.975709783e+10 inf =   3.191e+05 (5422) 1
+   5048: obj =   2.850774323e+10 inf =   2.286e+05 (4451) 2
+Perturbing LP to avoid stalling [5484]...
+   7504: obj =   3.068248943e+10 inf =   2.190e+05 (4027) 3
+  10072: obj =   3.429119274e+10 inf =   1.906e+05 (3520) 2
+  12252: obj =   4.256597998e+10 inf =   1.248e+05 (2566) 4
+  14699: obj =   4.283150372e+10 inf =   1.235e+05 (2462) 1
+  16893: obj =   5.057493533e+10 inf =   7.209e+04 (1559) 4
+  19344: obj =   5.503555371e+10 inf =   5.318e+04 (1091) 2
+  21682: obj =   6.182606948e+10 inf =   1.266e+04 (359) 4
+  23010: obj =   6.477960072e+10 inf =   0.000e+00 (0) 2
+* 25197: obj =   6.471537153e+10 inf =   0.000e+00 (22458)
+* 27449: obj =   6.462861025e+10 inf =   0.000e+00 (20100) 2
+* 29501: obj =   6.462861025e+10 inf =   0.000e+00 (18004)
+* 31553: obj =   6.462710444e+10 inf =   0.000e+00 (15943)
+* 33613: obj =   6.462201451e+10 inf =   0.000e+00 (13881) 1
+* 35751: obj =   6.454531042e+10 inf =   0.000e+00 (11716) 1
+* 38020: obj =   6.454410295e+10 inf =   0.000e+00 (9437)
+* 40261: obj =   6.447465510e+10 inf =   0.000e+00 (7204) 1
+* 42370: obj =   6.318995944e+10 inf =   0.000e+00 (5271) 5
+* 44497: obj =   6.244365327e+10 inf =   0.000e+00 (3116) 8
+* 46755: obj =   6.222556288e+10 inf =   0.000e+00 (959) 4
+Removing LP perturbation [47595]...
+* 47595: obj =   6.202218741e+10 inf =   0.000e+00 (0) 4
+OPTIMAL LP SOLUTION FOUND
+Inicio de construcci≤n de matriz
+Tiempo construccion matriz: 19.075504541397095
+Proceso de optimizaci≤n ha comenzado
+--- Tiempo optimizaci≤n: 229.7719841003418 segundos ---
+El costo total ≤ptimo es 62022187408.0613 COP
+
+Tiempo total de ejecucion: 231.32130122184753 segundos
+ Costo total operacion 62022187408.0613 COP
