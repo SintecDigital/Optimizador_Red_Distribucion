@@ -12,6 +12,11 @@ También se desarrollarán funciones que entreguen un output que tenga más sent
 
 
 def carga_datos(folder_path='input/'):
+    """
+    Esta función no la usaremos ya que no volveremos a guardar los datos en la carpeta input por separado.
+    :param folder_path:
+    :return: DATASETS: lista que contiene los DFs a usar
+    """
 
     # Abrir bases de datos
     DATASET_NAMES = ['master_red_infraestructura.csv', 'master_ubicaciones.csv', 'master_demanda.csv',
@@ -22,12 +27,12 @@ def carga_datos(folder_path='input/'):
     return DATASETS
 
 
-def ejecucion(DATASETS: list):
+def ejecucion(DATASETS: dict):
     """
     Función que corre el optimizador. Construye el escenario desde la carga de datos hata la construccion de inputs de
     la herramienta.
 
-    :param DATASETS:
+    :param DATASETS: diccionario con los DFs a analizar
     :return:
     """
 
@@ -35,10 +40,12 @@ def ejecucion(DATASETS: list):
     start_time = time.time()
 
     # ejecutamos build_items() para construir tabla de items
-    items = build_items(DATASETS[0], DATASETS[1], DATASETS[2], DATASETS[3])
+    items = build_items(DATASETS['master_red_infraestructura'], DATASETS['master_ubicaciones'],
+                        DATASETS['master_demanda'], DATASETS['master_producto'])
 
     # Ejecutamos build_activities() construir tabla de actividades
-    actividades = build_activities(DATASETS[0], DATASETS[4], DATASETS[2], DATASETS[1])
+    actividades = build_activities(DATASETS['master_red_infraestructura'], DATASETS['master_tarifario'],
+                                   DATASETS['master_demanda'], DATASETS['master_ubicaciones'])
 
     # Ejecutamos matriz_coef() para construir matriz de coeficientes
     func_time = time.time()
@@ -75,13 +82,3 @@ def guardar_outputs(df_list, df_names, output_path='output/'):
         df.to_csv(output_path + name, index=True)
 
     return 0
-
-
-def costos_red():
-    """
-    Retorna una tabla con los costos de operación de la red, específicamente aquellos de Distribución (inicialmente sin
-    distinguir T1 y T2), Exportación, Almacenamiento, y costo de movimiento dinámico.
-
-    :return:
-    """
-    pass
