@@ -14,9 +14,10 @@ def remover_tildes_espacios(series):
     return series
 
 
-def ajustar_producto(df_producto):
+def ajustar_producto(df_producto, file_path):
     """
     Ajusta el master de productos
+    :param file_path:
     :param df_producto:
     :return: df_producto: Master productos limpio
     """
@@ -36,7 +37,7 @@ def ajustar_producto(df_producto):
 
     # Agrupar y decir cuánto salió
     df_producto = df_producto.groupby(['familia', 'ubicacion_producto'])['produccion_max'].mean().reset_index()
-    print('Habían %d filas en master_producto y ahora hay %d' % (filas_df_prod, df_producto.shape[0]))
+    print(f'{file_path}\nHabían {filas_df_prod} filas en master_producto y ahora hay {df_producto.shape[0]}')
 
 
     return df_producto
@@ -75,18 +76,19 @@ def ajustar_demanda(df_demanda, df_producto, df_tarifario):
 
     # Demanda omitida
     df_demanda_omitida = df_demanda.loc[set(df_demanda.index) - set(df_demanda_filtered.index)]
-    df_demanda_omitida = df_demanda_omitida.groupby(['año', 'fecha', 'familia', 'id_ciudad'])['cantidad'].sum().reset_index()
+    df_demanda_omitida = df_demanda_omitida.groupby(['fecha', 'familia', 'id_ciudad'])['cantidad'].sum().reset_index()
 
     # Agrupar demanda para asegurarnos de tener filar únicas dados los ids
-    df_demanda_filtered = df_demanda_filtered.groupby(['año', 'fecha', 'familia', 'id_ciudad'])['cantidad'].sum().reset_index()
+    df_demanda_filtered = df_demanda_filtered.groupby(['fecha', 'familia', 'id_ciudad'])['cantidad'].sum().reset_index()
 
-    print(f"Cantidad inicial {demanda}, cantidad final {df_demanda_filtered['cantidad'].sum()}")
+    print(f"Cantidad inicial {demanda}, cantidad final {df_demanda_filtered['cantidad'].sum()}\n")
     return df_demanda_filtered, df_demanda_omitida
 
 
 def limpieza_data(data_path, sheet_names, is_baseline=False):
 
     """
+    Llama las funciones especializadas de arriba para limpiar los masters.
     :param data_path: dirección relativa de archivo .xlsx o .xls que contiene la información a limpiar
     :param sheet_names: lista con los nombres de las hojas relevantes
     :param is_baseline: Boolean para determinar si el input es el baseline (que tiene un tratamiento especial)
@@ -100,11 +102,15 @@ def limpieza_data(data_path, sheet_names, is_baseline=False):
 
     # Condición para limpiar baseline por separado
     if is_baseline:
-        # Dado que solo tenemos dos hojas, deberíamos ponerlas aquí y limpiarlas.
-        pass
+        # Dado que solo tenemos dos hojas, deberíamos ponerlas aquí y limpiarlas. Se itera dos veces. Una por archivo,
+        # otra por columnas.
+        for df in datasets:
+            for col in datasets[df]:
+                datasets[df][col] = remover_tildes_espacios(datasets[df][col])
+                print('Mayúsculas, espacios extraños, y tildes y caracteres extraños correctamente eliminados')
     else:
         # Limpieza de master_producto, master_tarifario, y master_demanda
-        datasets['master_producto'] = ajustar_producto(datasets['master_producto'])
+        datasets['master_producto'] = ajustar_producto(datasets['master_producto'], data_path)
         datasets['master_tarifario'] = ajustar_tarifario(datasets['master_tarifario'])
         datasets['master_demanda'], datasets['demanda_omitida'] = ajustar_demanda(datasets['master_demanda'],
                                                                       datasets['master_producto'],
@@ -112,36 +118,28 @@ def limpieza_data(data_path, sheet_names, is_baseline=False):
     return datasets
 
 
-"""
 if __name__ == '__main__':
 
+    """
+    Aquí está el código que se usa al ejecutarse directamente esta función para limpiar las 3 bases de datos a la vez.
+    """
 
-    # La idea es limpiar los 3 archivos, aunque el baseline se hace de forma separada, ya que tiene hojas diferentes
-    DATA_PATH = ['datamaster_baseline.xlsx']
+    # Al existir la posibilidad de que alguno de los 3 archivos posibles no esté, atrapamos el error
+    DATAPATH = ['datamaster_baseline.xlsx', 'datamaster_base_opt.xlsx', 'datamaster_escenario.xlsx']
+    sheet_names = ['master_producto', 'master_ubicaciones', 'master_demanda',
+                   'master_tarifario', 'master_red_infraestructura']
+    baseline_sheet_names = []
+    datasets = {}
 
-    # Tal vez toque hacer funciones especiales para limpiar el baseline
+    for path in DATAPATH:
+        try:
+            if path == 'datamaster_baseline.xlsx':
+                datasets[path] = limpieza_data('input/' + path, baseline_sheet_names, is_baseline=True)
+            else:
+                datasets[path] = limpieza_data('input/' + path, sheet_names)
+                datasets[path]['demanda_omitida'].to_excel('input/' + path[:-5] + '_demanda_omitida.xlsx')
+        except FileNotFoundError:
+            print(f'El archivo {path} no fue encontrado\n')
+            pass
 
-
-    DATA_PATH = ['datamaster_base_opt.xlsx', 'datamaster_escenarios.xlsx']
-    #DATA_PATH = 'datamaster.xlsx'
-
-    for datamaster in DATA_PATH:
-        # Tomamos las hojas relevantes del .xlsx
-        DATASET_NAMES = ['master_producto', 'master_ubicaciones', 'master_demanda',
-                         'master_tarifario', 'master_red_infraestructura']
-        DATASETS = [pd.read_excel(DATA_PATH, sheet_name=i) for i in DATASET_NAMES]
-
-        # Los asignamos a objetos independientes sin razon alguna
-        master_producto, master_ubicaciones, master_demanda, master_tarifario, master_red = DATASETS
-
-        # Limpieza de master_producto, master_tarifario, y master_demanda
-        producto = ajustar_producto(master_producto)
-        tarifario = ajustar_tarifario(master_tarifario)
-        demanda, demanda_omitida = ajustar_demanda(master_demanda, producto, tarifario)
-
-        producto.to_csv('input/master_producto.csv', index=False)
-        demanda.to_csv('input/master_demanda.csv', index=False)
-        demanda_omitida.to_csv('input/demanda_omitida.csv', index=False)
-        tarifario.to_csv('input/master_tarifario.csv', index=False)
-        master_ubicaciones.to_csv('input/master_ubicaciones.csv', index=False)
-        master_red.to_csv('input/master_red_infraestructura.csv', index=False)"""
+    # No hay necesidad de guardar los archivos para limpieza, de hecho. Con solo ejecutarlos ya es suficiente.
