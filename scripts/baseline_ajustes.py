@@ -1,7 +1,7 @@
 """
-Este script limpia los archivos de RFI. Estará almacenado en una carpeta oculta con el fin de dejar transparencia en
+Este script crea el master a partir del RFI. Estará almacenado en una carpeta oculta con el fin de dejar transparencia en
 cómo se limpiaron los archivos. Este archivo toma los datos almacenados en el RFI y guarda un archivo nuevo en el input.
-Este script no se usa por el clinete, es para tener trazabilidad de cómo se construyó el baseline. Los paths de este
+Este script no se usa por el cliente, es para tener trazabilidad de cómo se construyó el baseline. Los paths de este
 script son diferentes a los que estamos usando dado que este  código no correrá desde Powershell ni desde la interfaz.
 Este código se corre internamente.
 """
@@ -83,11 +83,11 @@ def variables_decision_nacional(data, tarifario, apoyo_t2):
     # Luego, haremos una variación en el diccionario de pesos usado en el tarifario. Habían cinco casos, donde dos de
     # ellos (que haya solo dos tarifas aunque de diferentes pesos) son iguales en la cantidad de tarifas disponibles.
     # El cambio es el siguiente. Si hay solo 1 transporte, va 100%; si hay dos, va el 95% en el más alto y 5%; si hay
-    # tres, va 90%, 5%, 5%; y si hay cuatro, van 95%, 3%, 1%, 1%.
+    # tres, va 87%, 5%, 8%; y si hay cuatro, van 92%, 3%, 1%, 4%.
 
     tarifario = tarifario.loc[(tarifario['id_ciudad_origen'].isin(['MB_PLANT', 'CGNA_PLANT', 'CGNA_CEDI', 'ABOD','BBOD',
                                                             'CBOD', 'BUEN_PORT'])) & (tarifario['capacidad'] != 999)]
-    pesos_camion_dict = {1: [1], 2: [0.95, 0.05], 3: [0.9, 0.05, 0.05], 4: [0.95, 0.03, 0.01, 0.01]}
+    pesos_camion_dict = {1: [1.05], 2: [0.9, 0.1], 3: [0.80, 0.05, 0.15], 4: [0.8, 0.03, 0.01, 0.16]}
 
     # Hacer un groupby provisional para saber cuántos transportes hay por rutas. Luego lo unimos con tarifario organizado por alfabeto
     tarifario_group = tarifario.groupby(['id_ciudad_origen', 'id_ciudad_destino'])['capacidad'].count().reset_index()
@@ -101,9 +101,14 @@ def variables_decision_nacional(data, tarifario, apoyo_t2):
     tarifario = tarifario.loc[:, ['id_ciudad_origen', 'id_ciudad_destino', 'capacidad', 'costo', 'conteo']]
     tarifario['tasa_util'] = 0
     for i in tarifario['conteo'].unique():
-        tarifario.loc[tarifario['conteo'] == i, 'tasa_util'] = pesos_camion_dict[i] * \
-                                                               int(tarifario.loc[
-                                                                       tarifario['conteo'] == i, 'conteo'].shape[0] / i)
+        tarifario.loc[tarifario['conteo'] == i, 'tasa_util'] = pesos_camion_dict[i] * int(tarifario.loc[tarifario['conteo'] == i, 'conteo'].shape[0] / i)
+
+    # Calcular costo de almacenamiento
+    almacenamiento = data.loc[data['id_ciudad_destino'].isin(['ABOD', 'BBOD', 'CBOD', 'CGNA_CEDI'])]
+    almacenamiento.loc[:, 'id_ciudad_destino'] = almacenamiento['id_ciudad_destino'] + '_ALMACENAMIENTO'
+    almacenamiento.loc[:, 'capacidad'] = 1
+    almacenamiento.loc[:, 'costo'] = 34401 * 1.105
+    almacenamiento['valor_decision'] = almacenamiento.loc[:, 'cantidad']
 
     # Cruzar demanda con tarifario, cruzar homologacion, guardar omitidos
     data = data.merge(tarifario, how='left', on=['id_ciudad_origen', 'id_ciudad_destino'])
@@ -125,10 +130,11 @@ def variables_decision_nacional(data, tarifario, apoyo_t2):
     demanda_final = (data['cantidad'] * data['tasa_util']).sum()
 
     # Preparar output para que tenga misma estructura de procedimiento optimizado, mostrar demanda preliminar y final
+    data = pd.concat([data, almacenamiento], ignore_index=True)
     data = data.rename(columns={'fecha': 'tiempo', 'familia': 'producto', 'capacidad': 'transporte',
                                 'id_ciudad_origen': 'origen', 'id_ciudad_destino': 'destino'})
     data = data.loc[:, ['tiempo', 'producto', 'transporte', 'origen', 'destino', 'costo', 'valor_decision']]
-    print(f"Habían {demanda_inicial} toneladas y ahora hay {demanda_final}")
+    print(f"Habían {demanda_inicial} toneladas y ahora hay {demanda_final} en Nacional")
 
     return data, data_omitida
 
@@ -168,7 +174,11 @@ def variables_decision_exp(exp, tarifario, factor_eficiencia):
     # Crear conteo de demanda de exportación inicial
     demanda_inicial = exp['cantidad'].sum()
 
-    # Unir con tarifario
+    # Unir con tarifario. Tener en cuenta que aquí no se hace optimización, así que no pueden haber varios tarifarios
+    # para el mismo destino. Tomamos la capacidad más grande por destino
+    tarifario = tarifario.sort_values('capacidad').drop_duplicates(['id_ciudad_origen',
+                                                                    'id_ciudad_destino'], keep='last')
+
     exp = exp.merge(tarifario, how='left', on=['id_ciudad_origen', 'id_ciudad_destino'])
     exp_omitida = exp.loc[exp['capacidad'].isna()]
     exp = exp.loc[~exp['capacidad'].isna()]
@@ -177,7 +187,7 @@ def variables_decision_exp(exp, tarifario, factor_eficiencia):
     exp['valor_decision'] = exp['cantidad'] / (exp['capacidad'] * factor_eficiencia)
 
     # Mostrar demanda final
-    print(f"Habían {demanda_inicial} toneladas y ahora hay {exp['cantidad'].sum()}")
+    print(f"Habían {demanda_inicial} toneladas y ahora hay {exp['cantidad'].sum()} en Exportación")
 
     # Preparar output para que tenga misma estructura de procedimiento optimizado
     exp = exp.rename(columns={'fecha': 'tiempo', 'familia': 'producto', 'capacidad': 'transporte',
