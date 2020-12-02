@@ -51,10 +51,11 @@ def ajustar_tarifario(df_tarifario):
     :return:
     """
     # Agrupamos para verificar que tenemos valores únicos, usamos media en caso que hayan valores repetidos
-    df_tarifario = df_tarifario.groupby(['id_ciudad_origen', 'id_ciudad_destino', 'capacidad'])[
-        'costo'].mean().reset_index()
     df_tarifario['id_ciudad_origen'] = remover_tildes_espacios(df_tarifario['id_ciudad_origen'])
     df_tarifario['id_ciudad_destino'] = remover_tildes_espacios(df_tarifario['id_ciudad_destino'])
+    df_tarifario = df_tarifario.groupby(['id_ciudad_origen', 'id_ciudad_destino',
+                                         'capacidad'])['costo'].mean().reset_index()
+
 
     return df_tarifario
 
@@ -86,28 +87,32 @@ def ajustar_demanda(df_demanda, df_producto, df_tarifario):
 
 
 def limpieza_data(data_path, sheet_names, is_baseline=False):
-
     """
     Llama las funciones especializadas de arriba para limpiar los masters.
     :param data_path: dirección relativa de archivo .xlsx o .xls que contiene la información a limpiar
     :param sheet_names: lista con los nombres de las hojas relevantes
     :param is_baseline: Boolean para determinar si el input es el baseline (que tiene un tratamiento especial)
 
-    :return: datasets: diccionario que contiene todos los masters de datos y demanda omitida para cuando aplique
+    :return: datasets: diccionario que contiene todos los masters de datos
     """
 
     # Los guardaremos en un dicccionario con los nombres de cada hoja
     datasets = [pd.read_excel(data_path, sheet_name=i) for i in sheet_names]
     datasets = dict(zip(sheet_names, datasets))
 
+    # Limpiar tarifario
+    datasets['mater_tarifario'] = ajustar_tarifario(datasets['master_tarifario'])
     # Condición para limpiar baseline por separado
     if is_baseline:
         # Dado que solo tenemos dos hojas, deberíamos ponerlas aquí y limpiarlas. Se itera dos veces. Una por archivo,
         # otra por columnas.
         for df in datasets:
             for col in datasets[df]:
-                datasets[df][col] = remover_tildes_espacios(datasets[df][col])
-                print('Mayúsculas, espacios extraños, y tildes y caracteres extraños correctamente eliminados')
+                try:
+                    datasets[df][col] = remover_tildes_espacios(datasets[df][col])
+                except AttributeError:
+                    pass
+        print(f'{data_path}\nMayúsculas, espacios extraños, y tildes y caracteres extraños correctamente eliminados\n')
     else:
         # Limpieza de master_producto, master_tarifario, y master_demanda
         datasets['master_producto'] = ajustar_producto(datasets['master_producto'], data_path)
